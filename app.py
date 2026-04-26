@@ -51,9 +51,9 @@ def main():
     # 頂部列
     col_input1, col_input2, col_input3, col_btn = st.columns([1.5, 1.5, 1.5, 1])
     with col_input1:
-        ticker = st.text_input("選擇資料來源 (股票代號)", value="AAPL")
+        ticker = st.text_input("選擇資料來源 (股票代號 EX. AAPL or 2330.TW)", value="")
     with col_input2:
-        start_date = st.date_input("開始時間", value=datetime.date.today() - datetime.timedelta(days=365))
+        start_date = st.date_input("開始時間", value=datetime.date.today() - datetime.timedelta(days=730)) # 預設 2 年前
     with col_input3:
         end_date = st.date_input("結束時間", value=datetime.date.today())
     with col_btn:
