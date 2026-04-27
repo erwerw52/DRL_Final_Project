@@ -65,7 +65,7 @@ pip install smartmoneyconcepts
 ```
 
 ### 2. streamlit demo site
-(https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app)[https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app]
+https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app
 
 ### 3. 操作介面
 
