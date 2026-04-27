@@ -16,8 +16,9 @@ class TradingEnv:
         self.net_worth = self.initial_balance
         self.highest_net_worth = self.initial_balance
         
-        # State dimension: [pd_pos, is_premium, is_discount, open, high, low, close] (Total 7)
-        self.state_dim = 7
+        # State dimension: [pd_pos, is_premium, is_discount, open, high, low, close, 
+        #                   fvg, ob, liq_swept, dist_old_high, dist_old_low] (Total 12)
+        self.state_dim = 12
         
     def reset(self):
         self.balance = self.initial_balance
@@ -37,15 +38,27 @@ class TradingEnv:
         # Normalize prices slightly for the neural network
         base_price = row['close'] if row['close'] > 0 else 1.0
         
+        # safely handle missing or non-numeric SMC states by fallback to 0
+        fvg = float(row.get('fvg', 0)) if str(row.get('fvg', 0)).replace('-', '').replace('.', '').isdigit() else 0.0
+        ob = float(row.get('ob', 0)) if str(row.get('ob', 0)).replace('-', '').replace('.', '').isdigit() else 0.0
+        liq_swept = float(row.get('liq_swept', 0)) if str(row.get('liq_swept', 0)).replace('-', '').replace('.', '').isdigit() else 0.0
+        dist_old_high = float(row.get('dist_old_high', 0)) if str(row.get('dist_old_high', 0)).replace('-', '').replace('.', '').isdigit() else 0.0
+        dist_old_low = float(row.get('dist_old_low', 0)) if str(row.get('dist_old_low', 0)).replace('-', '').replace('.', '').isdigit() else 0.0
+        
         state = np.array([
-            row['pd_pos'],
-            row['is_premium'],
-            row['is_discount'],
-            row['open'] / base_price,
-            row['high'] / base_price,
-            row['low'] / base_price,
-            row['close'] / base_price,
-        ])
+            float(row['pd_pos']),
+            float(row['is_premium']),
+            float(row['is_discount']),
+            float(row['open']) / base_price,
+            float(row['high']) / base_price,
+            float(row['low']) / base_price,
+            float(row['close']) / base_price,
+            fvg,
+            ob,
+            liq_swept,
+            dist_old_high,
+            dist_old_low
+        ], dtype=np.float32)
         
         return state
         

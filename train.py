@@ -13,7 +13,7 @@ from utils.replay_buffer import ReplayBuffer
 import pandas as pd
 
 
-def run_training_from_df(df: pd.DataFrame, cfg: Config) -> dict:
+def run_training_from_df(df: pd.DataFrame, cfg: Config, progress_callback=None) -> dict:
     cfg.outputs_dir.mkdir(parents=True, exist_ok=True)
     set_seed(cfg.seed)
 
@@ -70,12 +70,14 @@ def run_training_from_df(df: pd.DataFrame, cfg: Config) -> dict:
         
         log_line = (
             f"Episode {episode + 1:03d}/{cfg.episodes} | "
-            f"Reward: {total_reward:.4f} | "
-            f"Avg Loss: {avg_loss:.6f} | "
+            f"Reward: {total_reward:,.2f} | "
+            f"Avg Loss: {avg_loss:,.2f} | "
             f"Epsilon: {agent.epsilon:.4f}"
         )
         print(log_line)
         training_logs.append(log_line)
+        if progress_callback:
+            progress_callback(log_line)
 
     agent.save(str(cfg.model_path))
 
@@ -109,7 +111,7 @@ def run_training_from_df(df: pd.DataFrame, cfg: Config) -> dict:
     plt.tight_layout()
     plt.savefig(cfg.outputs_dir / "training_losses.png", dpi=150)
     plt.close()
-
+    
     print(f"Model saved to: {cfg.model_path}")
     print(f"Artifacts saved in: {cfg.outputs_dir}")
 

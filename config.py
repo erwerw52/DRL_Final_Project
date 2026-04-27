@@ -23,7 +23,7 @@ class Config:
     reward_scale: float = 1.0
 
     # Agent / training
-    state_dim: int = 7
+    state_dim: int = 12
     action_dim: int = 3
     episodes: int = 30
     batch_size: int = 64

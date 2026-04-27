@@ -5,3 +5,4 @@ torch>=2.0
 yfinance>=1.3.0
 streamlit>=1.30.0
 plotly>=5.18.0
+smartmoneyconcepts>=0.0.26
