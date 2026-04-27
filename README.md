@@ -64,13 +64,8 @@ pip install -r requirements.txt
 pip install smartmoneyconcepts
 ```
 
-### 2. 啟動 Streamlit 服務
-
-請在終端機中執行以下指令開啟本機伺服器：
-
-```bash
-streamlit run app.py
-```
+### 2. streamlit demo site
+https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app/[https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app/]
 
 ### 3. 操作介面
 
