@@ -229,6 +229,20 @@ def main():
                 # 即使沒發生也加個空標示提醒使用者該區間內沒有觸發
                 fig.add_trace(plotly_go.Scatter(x=[df['date_str'].iloc[0]], y=[np.nan], mode='markers', name='無流動性獵取', marker=dict(symbol='x', color='purple', size=8)))
         
+        # 標示 Premium / Discount Zones
+        # 使用最高與最低價計算 50% 均衡線
+        if len(df) > 0:
+            recent_high = df['high'].max()
+            recent_low = df['low'].min()
+            eq_level = (recent_high + recent_low) / 2
+            
+            fig.add_hline(y=eq_level, line_dash="solid", line_color="gray", annotation_text="Equilibrium (50%)", annotation_position="bottom right")
+            
+            # Premium 區域背景
+            fig.add_hrect(y0=eq_level, y1=recent_high, line_width=0, fillcolor="red", opacity=0.05, annotation_text="Premium", annotation_position="top left", layer="below")
+            # Discount 區域背景
+            fig.add_hrect(y0=recent_low, y1=eq_level, line_width=0, fillcolor="green", opacity=0.05, annotation_text="Discount", annotation_position="bottom left", layer="below")
+
         fig.update_layout(height=550, margin=dict(l=0, r=0, t=30, b=0), xaxis_rangeslider_visible=False, xaxis_type="category", title="SMC Price Action")
         fig.update_xaxes(type="category", nticks=10)
         
