@@ -17,9 +17,10 @@ st.set_page_config(page_title="SMC & DRL Prediction Platform", layout="wide")
 # 初始化設定
 cfg = Config()
 
-def load_data(ticker, start, end):
+def load_data_raw(ticker):
     try:
-        df = yf.download(ticker, start=start, end=end)
+        # 強制抓取兩年小時級別資料
+        df = yf.download(ticker, period="730d", interval="1h")
         if df.empty:
             return None
         
@@ -32,25 +33,74 @@ def load_data(ticker, start, end):
         rename_map = {"Date": "date", "Datetime": "date", "Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}
         df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
         
-        # 使用 data_utils 準備包含 SMC 數據
-        df = prepare_data_from_df(df, rolling_window=cfg.rolling_window)
+        # 轉換為台灣時間 (Asia/Taipei)
+        if pd.api.types.is_datetime64_any_dtype(df['date']):
+            if df['date'].dt.tz is not None:
+                # 若帶有時區，直接轉換成台北時間，並移除時區標籤以利後續運算
+                df['date'] = df['date'].dt.tz_convert('Asia/Taipei').dt.tz_localize(None)
+            else:
+                # 若沒有時區標籤，預設當作 UTC 處理後再轉
+                df['date'] = df['date'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei').dt.tz_localize(None)
+                
         return df
     except Exception as e:
         st.error(f"資料獲取失敗: {e}")
         return None
 
+def process_data(raw_df, interval, rolling_window):
+    df = raw_df.copy()
+    df.set_index("date", inplace=True)
+    
+    if interval == "1h":
+        pass
+    elif interval == "2h":
+        df = df.resample('2h').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+    elif interval == "4h":
+        df = df.resample('4h').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+    elif interval == "1d":
+        df = df.resample('D').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+    elif interval == "1wk":
+        # 週線以週一為起始
+        df = df.resample('W-MON').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+    elif interval == "1mo":
+        df = df.resample('ME').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+        
+    df.reset_index(inplace=True)
+    
+    # 檢查長度是否足夠計算 SMC
+    if len(df) < rolling_window:
+        st.warning(f"當前資料數量 ({len(df)}) 小於設定的滾動窗口 ({rolling_window})，這可能導致計算 SMC 特徵失敗。")
+        
+    # 使用 data_utils 準備包含 SMC 數據
+    df = prepare_data_from_df(df, rolling_window=rolling_window)
+    return df
+
 def main():
+    # 注入 CSS 來自訂按鈕樣式為天空藍
+    st.markdown("""
+        <style>
+        .stButton > button {
+            background-color: #87CEEB !important; /* 天空藍 */
+            color: #1E1E1E !important; /* 深色文字增加對比度與易讀性 */
+            border-color: #87CEEB !important;
+            font-weight: bold !important;
+        }
+        .stButton > button:hover {
+            background-color: #00BFFF !important; /* 滑鼠懸停變成更亮/深的天空藍 */
+            color: #ffffff !important;
+            border-color: #00BFFF !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     # 頂部列
-    col_input1, col_input2, col_input3, col_btn = st.columns([1.5, 1.5, 1.5, 1])
+    col_input1, col_input2, col_btn = st.columns([2, 1.5, 1], vertical_alignment="bottom")
     with col_input1:
         ticker = st.text_input("選擇資料來源 (股票代號 EX. AAPL or 2330.TW)", value="")
     with col_input2:
-        start_date = st.date_input("開始時間", value=datetime.date.today() - datetime.timedelta(days=730)) # 預設 2 年前
-    with col_input3:
-        end_date = st.date_input("結束時間", value=datetime.date.today())
+        interval_option = st.selectbox("時間級別", ["1h", "2h", "4h", "1d", "1wk", "1mo"], index=4)
     with col_btn:
-        st.write("") # 對齊用
-        start_btn = st.button("▶ 開始 SMC 分析", use_container_width=False)
+        start_btn = st.button("▶ 獲取資料並分析", width=190)
 
     st.divider()
 
@@ -74,33 +124,52 @@ def main():
     log_container = st.container(border=True)
     log_container.write("💻 DRL 模型訓練動態 Log")
     log_placeholder = log_container.empty()
+    train_btn_placeholder = log_container.empty()
         
     # 初始化畫面
     if start_btn:
-        with st.spinner("獲取股票資料中..."):
-            df = load_data(ticker, start_date, end_date)
-            if df is not None:
-                st.session_state["df"] = df
+        if not ticker:
+            st.warning("請輸入股票代號")
+            return
+        
+        # 按下分析時，清除舊的訓練紀錄，確保右側報告區重置
+        st.session_state.pop("model_ret", None)
+        
+        with st.spinner("取過去 2 年的小時級別資料中..."):
+            raw_df = load_data_raw(ticker)
+            if raw_df is not None:
+                st.session_state["raw_df"] = raw_df
                 st.session_state["ticker"] = ticker
             else:
-                st.error("無法獲取股票資料，請檢查代號或時間。")
+                st.error("無法獲取股票資料，請檢查代號。")
                 return
 
-    if "df" not in st.session_state:
+    if "raw_df" not in st.session_state:
         chart_placeholder.info("等待抓取資料繪製圖表...")
         log_placeholder.info("等待訓練開始...")
         report_placeholder.info("等待模型訓練完成...")
         return
         
-    df = st.session_state["df"]
+    raw_df = st.session_state["raw_df"]
     ticker = st.session_state.get("ticker", "UNKNOWN")
-        
+    
+    with chart_placeholder.container():
+        with st.spinner(f"正在組合 {interval_option} 級別並計算 SMC 特徵..."):
+            try:
+                df = process_data(raw_df, interval_option, cfg.rolling_window)
+            except Exception as e:
+                st.error(f"資料轉換或 SMC 計算失敗: {e}")
+                return
+            
     # 繪圖
     with chart_placeholder.container():
         # 改為單一主圖
         fig = plotly_go.Figure()
         
-        df['date_str'] = df['date'].dt.strftime('%Y-%m-%d')
+        if interval_option in ['1h', '2h', '4h']:
+            df['date_str'] = df['date'].dt.strftime('%Y-%m-%d %H:%M')
+        else:
+            df['date_str'] = df['date'].dt.strftime('%Y-%m-%d')
         
         # K線圖
         fig.add_trace(plotly_go.Candlestick(x=df['date_str'], open=df['open'], high=df['high'], low=df['low'], close=df['close'], name='K線'))
@@ -163,9 +232,11 @@ def main():
         fig.update_layout(height=550, margin=dict(l=0, r=0, t=30, b=0), xaxis_rangeslider_visible=False, xaxis_type="category", title="SMC Price Action")
         fig.update_xaxes(type="category", nticks=10)
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
-    if start_btn:
+    train_btn = train_btn_placeholder.button(f"🚀 訓練 DRL 模型", width=180)
+
+    if train_btn:
         # 模型訓練
         # 為了避免被 overwrite，我們在原本的 container 中建立獨立的區塊
         log_status = log_container.empty()
@@ -205,8 +276,11 @@ def main():
             
     # 模型推論與報告
     ret = st.session_state.get("model_ret", {})
-    if not ret and not start_btn:
+    if not ret and not train_btn:
         log_placeholder.info("等待新的模型訓練...")
+        report_placeholder.info("⏳ 等待模型訓練完成...")
+        return
+        
     report_placeholder.info("🧠 進行最新一筆資料推論...")
     agent = DQNAgent(state_dim=cfg.state_dim, action_dim=cfg.action_dim)
     if cfg.model_path.exists():
