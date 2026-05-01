@@ -8,9 +8,11 @@ class QNetwork(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(state_dim, 128),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(128, action_dim),
+            nn.LayerNorm(64),
+            nn.Linear(64, action_dim),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

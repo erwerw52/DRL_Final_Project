@@ -1,8 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
 /.venv
-/__pycache__
-/agent/__pycache__
-/env/__pycache__
-/model/__pycache__
-/utils/__pycache__
 /venv
-/outputs
+
+# Outputs (models, charts, logs)
+/outputs/
+logs/
+*.log
+
+# PDF documents (too large for git)
+*.pdf
+
+# Data files
+data/*.csv
+!data/sample_data.csv
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local backup
+_local_backup/
+
+# Conversation logs
+conversation.md

@@ -1,76 +1,121 @@
-# DRL Trading with Smart Money Concepts (SMC)
+# 📈 SMC × DRL Trading Platform
 
-此專案結合了**深度強化學習 (Deep Reinforcement Learning, DRL)** 與 **聰明錢概念 (Smart Money Concepts, SMC)**，建立一個擁有圖形化互動介面與即時訓練進度追蹤的自動化交易輔助系統。系統透過分析市場的微觀結構特徵，輔助 DQN 代理人學習最佳交易策略（買入、賣出、持有）。
+DEMO SITE:[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://114-2-drl-final.streamlit.app/)
 
-## ✨ 核心特色 (Features)
+此專案結合了**深度強化學習 (Deep Reinforcement Learning, DRL)** 與 **聰明錢概念 (Smart Money Concepts, SMC)**，建立一個具有高度互動性圖形介面與即時訓練追蹤的自動化量化交易輔助系統。
 
-* **SMC 交易特徵分析**：
-  使用 `smartmoneyconcepts` 函式庫解析市場盤面，將傳統 K 線轉化為專業交易員使用的 SMC 指標：
-  * **流動性池 (Liquidity Pools / Swept)**
-  * **前期高低點 (Old Highs / Old Lows)**
-  * **合理價值缺口 (Fair Value Gaps, FVG)**
-  * **訂單塊 (Order Blocks, OB)**
-  * 溢價區/折價區 (Premium / Discount Zones)
-* **DRL DQN 決策代理人**：
-  * 觀測狀態維度 (State Dimension) 擴充至 12 維，讓模型能吸收盤面的價格位置與 SMC 的各種距離及強弱標記。
-  * 動態分割預處理資料，並經過標準化的環境獎勵機制反覆迭代學習。
-  * 具備完整的回測 (Backtesting) 評估計算，呈現真實的勝率與夏普值 (Sharpe Ratio)。
-* **高互動 Plotly 繪圖分析戰情室**：
-  * 無需繁瑣開關設定，一鍵渲染帶有各式 SMC 分區與邊界的互動式 K 線圖。
-  * 透過點擊圖例 (Legend) 可以動態隱藏/顯示特定的 FVG 或 OB 區塊。
-* **即時終端機等級的訓練日誌 UI**：
-  * 具備自動下捲 (Auto-scroll到最底) 功能的網頁版擬真 Console，即時觀看 Reward 與 Loss。
-  * 所有呈現的資金、損失格式全面支援千分位金額標示 (例如 `33,505.17`)，提升閱讀性。
+透過擷取多時間級別（Multi-Timeframe: W1, D1, H4, H1）的市場微觀結構特徵，系統輔助 Deep Q-Network (DQN) 代理人學習最佳資金部位管理策略，並自動推算最佳風險報酬比 (Risk-Reward Ratio, RRR) 交易計畫。
+
+---
+
+## ✨ 核心特色 (Core Features)
+
+### 1. 🔍 聰明錢概念 (Smart Money Concepts, SMC) 分析
+系統使用 `smartmoneyconcepts` 技術將傳統 K 線轉化為機構級交易員關注的市場結構特徵，包含：
+* **流動性掃蕩 (Liquidity Sweeps)**
+* **前期高低點 (Old Highs / Old Lows / BSL / SSL)**
+* **合理價值缺口 (Fair Value Gaps, FVG)**：Bullish / Bearish Gaps
+* **訂單塊 (Order Blocks, OB)**：供需失衡的機構建倉區塊
+* **溢價/折價區 (Premium / Discount Zones)**
+
+### 2. 🧠 多時間級別 (MTF) DQN 決策代理人
+突破單一時間框架的限制，模型架構融合了**大局觀**與**微觀進場點**：
+* **狀態維度 (State Dimension)**：結合了技術指標與 W1, D1, H4, H1 四個時間級別的 SMC Bias（偏誤方向）。
+* **動作空間 (Action Space)**：採用資金部位管理模式，動態調整持倉比例 (`0%`, `25%`, `50%`, `100%`)。
+* **獎勵塑形 (Reward Shaping)**：
+  * 加入 **MTF Bonus**：順應大時區趨勢時給予額外獎勵。
+  * 加入 **Conflict Penalty**：逆勢操作時給予懲罰。
+  * 結合最大回撤懲罰 (Drawdown Penalty) 與交易摩擦成本 (Trade Penalty)。
+
+### 3. 📊 專業級互動式視覺化儀表板 (Streamlit Dashboard)
+提供無縫的資料獲取、模型訓練與圖表回測體驗：
+* **SMC K線圖**：透過 Plotly 渲染高互動性 K 線圖，支援動態顯示/隱藏 FVG、OB 及流動性標記。
+* **回測交易點位可視化**：在圖表上精準標註測試集的 `BUY` / `SELL` 動作。
+* **最佳/最差交易分析**：自動配對買賣點，計算每一筆交易的報酬率，並以視覺化標示出 **Best RRR** (金色) 與 **Worst RRR** (紅色) 的交易區間。
+* **純淨的 UI/UX 設計**：採用 Inter 現代英文字體、無表情符號的極簡專業化介面設計。
+
+### 4. 🚀 即時訓練追蹤與推薦報告
+* **Terminal-like Training Log**：於網頁端即時串流 DQN 訓練過程 (Episodes, Reward, Loss, Return)，支援自動向下滾動。
+* **DRL × SMC 推薦戰情室**：
+  * **Recommendation**: 系統給予最新的建倉建議與持倉比例。
+  * **MTF SMC**: 各級別的方向性偏誤 (Bias) 與共識分數 (Confluence Score)。
+  * **Backtest**: 顯示測試集之 Sharpe Ratio、Max Drawdown 與 Profit Factor。
+  * **RRR**: 基於當前市場結構，自動計算建議的入場點 (Entry)、止損點 (Stop Loss) 與止盈點 (Take Profit)。
+
+---
 
 ## 📁 專案架構 (Project Structure)
 
 ```text
-DRL_Final_Project/
-├── app.py              # Streamlit 網頁主程式（SMC儀表板、互動繪圖、訓練追蹤）
-├── train.py            # DRL 模型訓練邏輯與資料切分
-├── config.py           # 系統與超參數配置設定檔
-├── requirements.txt    # 依賴套件列表
+DRL-Final/
+├── app.py                      # Streamlit 網頁主程式（SMC儀表板、互動繪圖、訓練追蹤）
+├── train.py                    # DRL 模型訓練邏輯、資料切分與訓練管線
+├── config.py                   # 系統超參數、環境配置與部位設定檔
+├── recommend.py                # 交易策略推理與 RRR 計畫生成
+├── requirements.txt            # 依賴套件列表
 ├── agent/
-│   ├── __init__.py
-│   └── dqn_agent.py    # DQN 模型與代理人實作
+│   └── dqn_agent.py            # DQN 模型與代理人實作、經驗回放池
 ├── env/
-│   ├── __init__.py
-│   └── trading_env.py  # 支援 SMC 觀測狀態的 Gym-like 交易環境
+│   └── trading_env.py          # 支援 MTF SMC 狀態的 Gym-like 交易環境
 ├── model/
-│   ├── __init__.py
-│   └── network.py      # 神經網路架構
+│   └── network.py              # 神經網路結構實作
 └── utils/
-    ├── __init__.py
-    ├── data_utils.py   # 資料抓取與 SMC 前處理 (結合 yfinance 與 pandas)
-    ├── metrics.py      # 回測成效與夏普值計算
-    └── replay_buffer.py# 經驗回放池
+    ├── data_utils.py           # yfinance 資料爬取、MTF 合併與 SMC 特徵前處理
+    └── metrics.py              # 回測成效與夏普值等 KPI 計算
 ```
 
-## 🚀 快速開始 (Quick Start)
+---
 
-### 1. 安裝環境與依賴套件
+## 🛠️ 安裝與啟動 (Installation & Quick Start)
 
-請使用虛擬環境 (Virtual Environment) 進行安裝，避免套件衝突：
+### 1. 建立虛擬環境與安裝依賴套件
+
+為避免套件衝突，強烈建議使用虛擬環境 (Virtual Environment)：
 
 ```bash
-# 建立並啟動虛擬環境 (Windows 範例)
-python -m venv venv
-.\venv\Scripts\activate
+# 建立並啟動虛擬環境 (Mac/Linux)
+python3 -m venv venv
+source venv/bin/activate
+
+# 若為 Windows 用戶，請使用：
+# python -m venv venv
+# .\venv\Scripts\activate
 
 # 安裝所需套件
 pip install -r requirements.txt
 
-# 安裝 SMC 指標分析庫
+# 安裝 SMC 指標分析庫 (若 requirements.txt 未包含)
 pip install smartmoneyconcepts
 ```
 
-### 2. streamlit demo site
-https://drlfinalproject-whc4jiboyzx96fcyz9qmbt.streamlit.app
+### 2. 啟動 Streamlit 服務
 
-### 3. 操作介面
+在專案根目錄下的終端機執行以下指令啟動儀表板：
 
-1. 於瀏覽器自動開啟的網頁中，輸入目標**股票代號**（例如 `AAPL`、`2330.TW`、或加密貨幣 `BTC-USD`）。
-2. 選定您要擷取的歷史時間區間。
-3. 點擊 **開始 SMC 分析**。
-4. 網頁會自動繪製高互動性的 SMC 盤面結構，同時下方會即時串流顯示 DQN 模型最新的學習狀況（Episode, Reward, Loss）。
-5. 訓練完成後，右側面板會自動生成基於當前最新一筆歷史 K 線特徵的**建議動作 (買入/持有/賣出)** 以及**模型綜合評估報告 (勝率、夏普值)**。
+```bash
+streamlit run app.py
+```
+
+---
+
+## 📖 操作指南 (User Guide)
+
+1. **參數設定**：於瀏覽器開啟網頁後，在頂部輸入目標**股票代號 / Ticker**（例如 `2330.TW`、`AAPL` 或加密貨幣 `BTC-USD`），並選擇**開始日期**與**結束日期**。
+2. **抓取資料**：點擊 **`Fetch & Analyze`**，系統會自動透過 `yfinance` 抓取並運算 SMC 特徵，渲染高互動性的 SMC K線圖表。
+3. **多時間框架切換**：在圖表上方的下拉選單可以即時切換 `1h`, `4h`, `1d`, `1wk` 級別的視角，檢視不同維度的市場結構。
+4. **啟動訓練**：點擊圖表下方的 **`DQN + SMC + MTF + RRR (...)`** 按鈕，系統便會自動在背景執行 DRL 訓練，並在畫面上即時滾動輸出訓練進度與報酬率。
+5. **檢視策略報告**：訓練完成後，圖表上會疊加 DRL 代理人在測試集(Test Set) 的交易紀錄（綠上箭頭/紅下箭頭），並突顯表現最好與最差的波段。同時下方會呈現四欄式的**分析建議報告 (DRL × SMC Report)**。
+
+---
+
+## ⚙️ 訓練超參數設定 (Hyperparameters)
+如需微調 DRL 代理人或環境設定，請編輯 `config.py`，重點參數如下：
+
+* **部位比例**：`ACTION_POSITION_RATIOS = [0.0, 0.25, 0.50, 1.0]`
+* **訓練/驗證/測試 切分**：`train_ratio=0.7`, `val_ratio=0.15`, `test_ratio=0.15`
+* **交易成本**：手續費率 `0.001425`，交易稅 `0.003` (依台股預設)
+* **DQN 網路**：`gamma=0.95`, `lr=1e-4`, `batch_size=64`, `episodes=25`
+
+---
+
+> **⚠️ 免責聲明 (Disclaimer)**：本專案為學術研究與程式開發練習，模型輸出的「買賣建議」、「最佳進出場點」與「回測績效」僅供參考。實際金融市場具高度風險，本系統**不構成任何實質投資建議**，使用者應自行承擔投資風險。
